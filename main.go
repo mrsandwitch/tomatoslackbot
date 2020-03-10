@@ -32,6 +32,7 @@ type config struct {
 const DEFAULT_CONF_PATH = "/.tomatobot/conf.json"
 
 func TomatoClockStart(w http.ResponseWriter, req *http.Request) {
+	duration := 25
 	t := time.Now()
 	timeFormat := "2006-01-02 15:04:05"
 
@@ -42,13 +43,12 @@ func TomatoClockStart(w http.ResponseWriter, req *http.Request) {
 	}
 
 	go func() {
+		time.Sleep(time.Duration(duration) * time.Minute)
+
 		t := time.Now()
 		timeFormat := "2006-01-02 15:04:05"
 
-		//time.Sleep(5 * time.Second)
-		time.Sleep(25 * time.Minute)
-
-		text := fmt.Sprintf("Tomato clock finished on [%s]", t.Format(timeFormat))
+		text := fmt.Sprintf("Tomato clock finished on [%s]. Elapse[%d min]", t.Format(timeFormat), duration)
 		if _, err := SendMsg(text); err != nil {
 			log.Fatal(err)
 		}
