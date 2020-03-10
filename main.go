@@ -7,11 +7,15 @@ import (
 	"fmt"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
+	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 	"time"
 )
 
+var inHookUrl = flag.String("in_hook_url", "", "Incomming hool url")
 var ip = flag.String("ip", "0.0.0.0", "server ip")
 var rootDir = flag.String("root_dir", "/root/workspace", "root directory")
 
@@ -20,6 +24,12 @@ var port = flag.Int("port", 8000, "server port")
 type message struct {
 	Text string `json:"text"`
 }
+
+type config struct {
+	IncommingHookUrl string `json:"incomming_hook_url"`
+}
+
+const DEFAULT_CONF_PATH = "/.tomatobot/conf.json"
 
 func TomatoClockStart(w http.ResponseWriter, req *http.Request) {
 	t := time.Now()
@@ -53,8 +63,53 @@ func TomatoClockStart(w http.ResponseWriter, req *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+func getConfigPath() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "/root" + DEFAULT_CONF_PATH
+	}
+
+	return home + DEFAULT_CONF_PATH
+}
+
+func (conf *config) save() error {
+	dir, err := filepath.Abs(filepath.Dir(getConfigPath()))
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
+	os.MkdirAll(dir, 0755)
+
+	data, err := json.MarshalIndent(conf, "", "\t")
+	if err != nil {
+		return err
+	}
+
+	err = ioutil.WriteFile(getConfigPath(), data, 0644)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (conf *config) read() error {
+	js, err := ioutil.ReadFile(getConfigPath())
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(js, conf)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func SendMsg(text string) (resp *http.Response, err error) {
-	url := "https://hooks.slack.com/services/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"
+	url := *inHookUrl
 
 	msg := message{
 		Text: text,
@@ -88,6 +143,26 @@ func SendMsg(text string) (resp *http.Response, err error) {
 
 func main() {
 	flag.Parse()
+
+	log.SetFlags(log.Lshortfile)
+
+	// Save and load config
+	conf := config{}
+	if *inHookUrl == "" {
+		if err := conf.read(); err != nil {
+			log.Fatal(err)
+		}
+		*inHookUrl = conf.IncommingHookUrl
+	} else {
+		conf.IncommingHookUrl = *inHookUrl
+		if err := conf.save(); err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	//if _, err := SendMsg("hello2"); err != nil {
+	//	log.Fatal(err)
+	//}
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
