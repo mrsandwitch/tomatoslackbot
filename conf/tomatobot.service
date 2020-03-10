@@ -1,0 +1,10 @@
+[Unit]
+Description=Tomato clock Slack bot
+
+[Service]
+Type=simple
+Restart=always
+ExecStart=/root/workspace/tomatoSlackBot/tomatoslackbot
+
+[Install]
+WantedBy=multi-user.target
