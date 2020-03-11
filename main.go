@@ -1,7 +1,8 @@
 package main
 
 import (
-	"bytes"
+	"bushyang/tomatoslackbot/service"
+	"bushyang/tomatoslackbot/util"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -12,7 +13,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"time"
 )
 
 var inHookUrl = flag.String("in_hook_url", "", "Incomming hool url")
@@ -21,59 +21,12 @@ var rootDir = flag.String("root_dir", "/root/workspace", "root directory")
 
 var port = flag.Int("port", 8000, "server port")
 
-type message struct {
-	Text string `json:"text"`
-}
-
 type config struct {
 	IncommingHookUrl string `json:"incomming_hook_url"`
 }
 
-const DEFAULT_CONF_PATH = "/.tomatobot/conf.json"
-
-func TomatoClockStart(w http.ResponseWriter, req *http.Request) {
-	duration := 25
-	t := time.Now()
-	timeFormat := "2006-01-02 15:04:05"
-
-	text := fmt.Sprintf("Tomato clock start on [%s]", t.Format(timeFormat))
-	_, err := SendMsg(text)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	go func() {
-		time.Sleep(time.Duration(duration) * time.Minute)
-
-		t := time.Now()
-		timeFormat := "2006-01-02 15:04:05"
-
-		text := fmt.Sprintf("Tomato clock finished on [%s]. Elapse[%d min]", t.Format(timeFormat), duration)
-		if _, err := SendMsg(text); err != nil {
-			log.Fatal(err)
-		}
-
-		time.Sleep(2 * time.Second)
-
-		if _, err := SendMsg("Please take a rest"); err != nil {
-			log.Fatal(err)
-		}
-	}()
-
-	w.WriteHeader(http.StatusOK)
-}
-
-func getConfigPath() string {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "/root" + DEFAULT_CONF_PATH
-	}
-
-	return home + DEFAULT_CONF_PATH
-}
-
 func (conf *config) save() error {
-	dir, err := filepath.Abs(filepath.Dir(getConfigPath()))
+	dir, err := filepath.Abs(util.GetDataDir())
 	if err != nil {
 		log.Println(err)
 		return err
@@ -86,7 +39,7 @@ func (conf *config) save() error {
 		return err
 	}
 
-	err = ioutil.WriteFile(getConfigPath(), data, 0644)
+	err = ioutil.WriteFile(util.GetConfigPath(), data, 0644)
 	if err != nil {
 		return err
 	}
@@ -95,7 +48,7 @@ func (conf *config) save() error {
 }
 
 func (conf *config) read() error {
-	js, err := ioutil.ReadFile(getConfigPath())
+	js, err := ioutil.ReadFile(util.GetConfigPath())
 	if err != nil {
 		return err
 	}
@@ -106,39 +59,6 @@ func (conf *config) read() error {
 	}
 
 	return nil
-}
-
-func SendMsg(text string) (resp *http.Response, err error) {
-	url := *inHookUrl
-
-	msg := message{
-		Text: text,
-	}
-
-	js, err := json.Marshal(msg)
-	if err != nil {
-		log.Println(err)
-		return nil, err
-	}
-	body := bytes.NewBuffer(js)
-
-	req, err := http.NewRequest("POST", url, body)
-	if err != nil {
-		log.Println(err)
-		return nil, err
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	client := http.Client{}
-
-	resp, err = client.Do(req)
-	if err != nil {
-		log.Println(err)
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	return resp, err
 }
 
 func main() {
@@ -160,16 +80,29 @@ func main() {
 		}
 	}
 
-	//if _, err := SendMsg("hello2"); err != nil {
-	//	log.Fatal(err)
-	//}
-
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 
+	db, err := service.InitDbService()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+
+	clockService := service.InitClockService(*inHookUrl, db)
+	webService := service.InitWebviewService(db)
+
+	//-- Test function
+	//sender := service.Sender{IncommingHookUrl: *inHookUrl}
+	//if _, err := sender.SendMsg("hello2"); err != nil {
+	//	log.Fatal(err)
+	//}
+	//clockService.Start()
+
 	r.Group(func(r chi.Router) {
 		{
-			r.Post("/tomato", TomatoClockStart)
+			r.Post("/tomato", clockService.TomatoClockStart)
+			r.Get("/view", webService.WebShow)
 		}
 	})
 
@@ -178,7 +111,7 @@ func main() {
 	url := fmt.Sprintf("%s:%d", *ip, *port)
 	server := &http.Server{Addr: url, Handler: r}
 
-	err := server.ListenAndServe()
+	err = server.ListenAndServe()
 	if err != nil {
 		log.Println(err)
 	}
