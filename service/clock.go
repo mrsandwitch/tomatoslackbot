@@ -44,7 +44,7 @@ func (clock *Clock) Start(record *ClockRecord) error {
 	}
 
 	go func() {
-		//time.Sleep(duration)
+		time.Sleep(duration)
 		t := time.Now()
 
 		text := fmt.Sprintf("Tomato clock finished on [%s]. Elapse[%s]", t.Format(timeFormat), duration.String())

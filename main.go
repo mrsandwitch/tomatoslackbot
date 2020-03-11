@@ -90,7 +90,7 @@ func main() {
 	defer db.Close()
 
 	clockService := service.InitClockService(*inHookUrl, db)
-	webService := service.InitWebviewService(db)
+	webService := service.InitWebviewService(*inHookUrl, db)
 
 	//-- Test function
 	//sender := service.Sender{IncommingHookUrl: *inHookUrl}
@@ -102,7 +102,8 @@ func main() {
 	r.Group(func(r chi.Router) {
 		{
 			r.Post("/tomato", clockService.TomatoClockStart)
-			r.Get("/view", webService.WebShow)
+			r.Post("/weburl", webService.WebUrlGet)
+			r.Get("/web", webService.WebShow)
 		}
 	})
 

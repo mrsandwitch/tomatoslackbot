@@ -1,6 +1,8 @@
 package service
 
 import (
+	"bushyang/tomatoslackbot/util"
+	"fmt"
 	"html/template"
 	"log"
 	"net/http"
@@ -8,12 +10,18 @@ import (
 )
 
 type Webview struct {
-	db *DbService
+	sender *Sender
+	db     *DbService
 }
 
-func InitWebviewService(db *DbService) *Webview {
+func InitWebviewService(inHookUrl string, db *DbService) *Webview {
+	sender := &Sender{
+		IncommingHookUrl: inHookUrl,
+	}
+
 	return &Webview{
-		db: db,
+		sender: sender,
+		db:     db,
 	}
 }
 
@@ -123,5 +131,20 @@ func (web *Webview) WebShow(w http.ResponseWriter, req *http.Request) {
 	err = t.Execute(w, webData)
 	if err != nil {
 		log.Fatal(err)
+	}
+}
+
+func (web *Webview) WebUrlGet(w http.ResponseWriter, req *http.Request) {
+	uri, err := util.GetDefaultUri()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	url := uri + "/web"
+	text := fmt.Sprintf("View the record at:\n %s\n", url)
+
+	_, err = web.sender.SendMsg(text)
+	if err != nil {
+		log.Println(err)
 	}
 }
