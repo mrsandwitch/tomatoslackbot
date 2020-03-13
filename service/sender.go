@@ -8,22 +8,22 @@ import (
 )
 
 type SenderService struct {
-	IncommingHookUrl string
+	conf *ConfigService
 }
 
 type message struct {
 	Text string `json:"text"`
 }
 
-func InitSenderService(incommingHookUrl string) *SenderService {
+func InitSenderService(conf *ConfigService) *SenderService {
 	service := &SenderService{
-		IncommingHookUrl: incommingHookUrl,
+		conf: conf,
 	}
 	return service
 }
 
 func (s *SenderService) SendMsg(text string) (resp *http.Response, err error) {
-	url := s.IncommingHookUrl
+	url := s.conf.GetInHoolUrl()
 
 	msg := message{
 		Text: text,

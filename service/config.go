@@ -17,13 +17,26 @@ type Config struct {
 	IncommingHookUrl string `json:"incomming_hook_url"`
 }
 
-func InitConfigService() *ConfigService {
+func InitConfigService(incommingHookUrl string) *ConfigService {
 	service := &ConfigService{}
+
+	// Save and load config
+	if err := service.read(); err != nil {
+		log.Fatal(err)
+	}
+
+	if incommingHookUrl != "" {
+		service.conf.IncommingHookUrl = incommingHookUrl
+		if err := service.save(); err != nil {
+			log.Fatal(err)
+		}
+	}
+
 	return service
 }
 
-func (service *ConfigService) GetConfig() Config {
-	return service.conf
+func (service *ConfigService) GetInHoolUrl() string {
+	return service.conf.IncommingHookUrl
 }
 
 func (service *ConfigService) save() error {
