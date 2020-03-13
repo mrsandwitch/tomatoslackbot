@@ -6,7 +6,8 @@ import (
 	"html/template"
 	"log"
 	"net/http"
-	"strings"
+	"sort"
+	"time"
 )
 
 type Webview struct {
@@ -69,7 +70,7 @@ func toReadable(records []ClockRecord) []recordReadable {
 	for ix, record := range records {
 		readables[ix] = recordReadable{
 			Start:    record.Start.Format(timeFormat),
-			Duration: record.Duration.String(),
+			Duration: fmt.Sprintf("%dm", record.Duration/time.Minute),
 			Tag:      record.Tag,
 			Desc:     record.Desc,
 		}
@@ -78,28 +79,48 @@ func toReadable(records []ClockRecord) []recordReadable {
 	return readables
 }
 
+type group struct {
+	Id     int
+	Title  string
+	record []ClockRecord
+}
+
+// For sorting
+type ByDate []group
+
+func (a ByDate) Len() int           { return len(a) }
+func (a ByDate) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a ByDate) Less(i, j int) bool { return a[i].Id > a[j].Id }
+
 func webDataGen(records []ClockRecord) (*WebData, error) {
 	webData := &WebData{}
-	table := make(map[string][]recordReadable)
-	readables := toReadable(records)
+	table := make(map[int][]ClockRecord)
+	groupFormat := "2006-01-02"
 
-	for _, r := range readables {
-		splits := strings.Split(r.Start, " ")
-		if len(splits) < 2 {
-			log.Fatal("Faile to split start time string")
-		}
-
-		key := splits[0]
-		r.Start = splits[1]
-
-		table[key] = append(table[key], r)
+	for _, r := range records {
+		groupId := r.Start.Year()*1000 + r.Start.YearDay()
+		table[groupId] = append(table[groupId], r)
 	}
 
+	var groups []group
 	for key, value := range table {
+		grp := group{
+			Title:  value[0].Start.Format(groupFormat),
+			Id:     key,
+			record: value,
+		}
+		groups = append(groups, grp)
+	}
+
+	sort.Sort(ByDate(groups))
+
+	for _, group := range groups {
+		readables := toReadable(group.record)
+
 		entry := WebDataEntry{
-			Count:     len(value),
-			Title:     key,
-			Readables: value,
+			Count:     len(group.record),
+			Title:     group.Title,
+			Readables: readables,
 		}
 		webData.Items = append(webData.Items, entry)
 	}
