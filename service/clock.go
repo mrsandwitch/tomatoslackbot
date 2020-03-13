@@ -9,18 +9,16 @@ import (
 )
 
 type Clock struct {
-	sender *Sender
+	sender *SenderService
 	db     *DbService
+	conf   *ConfigService
 }
 
-func InitClockService(inHookUrl string, db *DbService) *Clock {
-	sender := &Sender{
-		IncommingHookUrl: inHookUrl,
-	}
-
+func InitClockService(sender *SenderService, db *DbService, conf *ConfigService) *Clock {
 	return &Clock{
 		sender: sender,
 		db:     db,
+		conf:   conf,
 	}
 }
 

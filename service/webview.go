@@ -10,15 +10,11 @@ import (
 )
 
 type Webview struct {
-	sender *Sender
+	sender *SenderService
 	db     *DbService
 }
 
-func InitWebviewService(inHookUrl string, db *DbService) *Webview {
-	sender := &Sender{
-		IncommingHookUrl: inHookUrl,
-	}
-
+func InitWebviewService(sender *SenderService, db *DbService) *Webview {
 	return &Webview{
 		sender: sender,
 		db:     db,

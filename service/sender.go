@@ -7,7 +7,7 @@ import (
 	"net/http"
 )
 
-type Sender struct {
+type SenderService struct {
 	IncommingHookUrl string
 }
 
@@ -15,7 +15,14 @@ type message struct {
 	Text string `json:"text"`
 }
 
-func (s *Sender) SendMsg(text string) (resp *http.Response, err error) {
+func InitSenderService(incommingHookUrl string) *SenderService {
+	service := &SenderService{
+		IncommingHookUrl: incommingHookUrl,
+	}
+	return service
+}
+
+func (s *SenderService) SendMsg(text string) (resp *http.Response, err error) {
 	url := s.IncommingHookUrl
 
 	msg := message{

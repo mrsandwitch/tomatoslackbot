@@ -83,20 +83,19 @@ func main() {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 
-	db, err := service.InitDbService()
+	dbService, err := service.InitDbService()
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer db.Close()
+	defer dbService.Close()
 
-	clockService := service.InitClockService(*inHookUrl, db)
-	webService := service.InitWebviewService(*inHookUrl, db)
+	confService := service.InitConfigService()
+	senderService := service.InitSenderService(*inHookUrl)
+	clockService := service.InitClockService(senderService, dbService, confService)
+	webService := service.InitWebviewService(senderService, dbService)
 
 	//-- Test function
-	//sender := service.Sender{IncommingHookUrl: *inHookUrl}
-	//if _, err := sender.SendMsg("hello2"); err != nil {
-	//	log.Fatal(err)
-	//}
+	//senderService.SendMsg("hello2")
 	//clockService.Start()
 
 	r.Group(func(r chi.Router) {
