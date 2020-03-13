@@ -27,20 +27,40 @@ func getTpl() string {
 <!DOCTYPE html>
 <html>
 	<head>
-		<meta charset="UTF-8">
 		<title>Tomato Clock Record</title>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+
+		<!-- UIkit CSS -->
+		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/uikit@3.3.6/dist/css/uikit.min.css" />
+
+		<!-- UIkit JS -->
+		<script src="https://cdn.jsdelivr.net/npm/uikit@3.3.6/dist/js/uikit.min.js"></script>
+		<script src="https://cdn.jsdelivr.net/npm/uikit@3.3.6/dist/js/uikit-icons.min.js"></script>
 	</head>
 	<body>
-		{{ range .Items }}
-			<h2>{{.Title}} ({{.Count}})</h2>
-			{{range .Readables}}
-				<div>
-					<span>{{ .Start }}</span>
-					<span>{{ .Duration }}</span>
-					<span>{{ .Tag }}</span>
-				</div>
+		<div class="uk-child-width-1-3@m uk-grid-small" uk-grid>
+			{{ range .Items }}
+			<div class="uk-card uk-card-default uk-card-body uk-card-small">
+		        <h3 class="uk-card-title">
+					<div class="uk-card-badge uk-label">{{.Count}}</div>
+					{{.Title}} 
+				</h3>
+
+				<table class="uk-table uk-table-small uk-text-nowrap">
+					<tbody>
+						{{range .Readables}}
+						<tr>
+							<td class="uk-width-1-4">{{.Start}}</td>
+							<td class="uk-width-1-4">{{.Duration}}</td>
+							<td class="uk-text-{{.Label}}">{{.Tag}}</td>
+						</tr>
+						{{ end }}
+					</tbody>
+				</table>
+			</div>
 			{{ end }}
-		{{ end }}
+		</div>
 	</body>
 </html>
 `
@@ -50,6 +70,7 @@ type recordReadable struct {
 	Start    string
 	Duration string
 	Tag      string
+	Label    string
 	Desc     string
 }
 
@@ -64,15 +85,22 @@ type WebData struct {
 }
 
 func toReadable(records []ClockRecord) []recordReadable {
-	timeFormat := "2006-01-02 15:04:05"
+	timeFormat := "15:04:05"
 
 	readables := make([]recordReadable, len(records))
 	for ix, record := range records {
+		var label string
+		if record.Tag == "work" {
+			label = "primary"
+		} else if record.Tag == "spare" {
+			label = "success"
+		}
 		readables[ix] = recordReadable{
 			Start:    record.Start.Format(timeFormat),
 			Duration: fmt.Sprintf("%dm", record.Duration/time.Minute),
 			Tag:      record.Tag,
 			Desc:     record.Desc,
+			Label:    label,
 		}
 	}
 
