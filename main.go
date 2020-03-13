@@ -43,6 +43,7 @@ func main() {
 		{
 			r.Post("/tomato", clockService.TomatoClockStart)
 			r.Post("/weburl", webService.WebUrlGet)
+			r.Post("/setting", confService.Setting)
 			r.Get("/web", webService.WebShow)
 		}
 	})

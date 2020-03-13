@@ -27,7 +27,7 @@ func (clock *Clock) Destroy() {
 }
 
 func (clock *Clock) Start(record *ClockRecord) error {
-	duration := 25 * time.Minute
+	duration := clock.conf.DurationGet()
 	t := time.Now()
 	timeFormat := "2006-01-02 15:04:05"
 	text := fmt.Sprintf("Tomato clock start on [%s]", t.Format(timeFormat))

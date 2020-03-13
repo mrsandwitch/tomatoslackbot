@@ -23,7 +23,7 @@ func InitSenderService(conf *ConfigService) *SenderService {
 }
 
 func (s *SenderService) SendMsg(text string) (resp *http.Response, err error) {
-	url := s.conf.GetInHoolUrl()
+	url := s.conf.InHoolUrlGet()
 
 	msg := message{
 		Text: text,

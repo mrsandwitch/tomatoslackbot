@@ -35,6 +35,7 @@ func getTpl() string {
 			{{range .Readables}}
 				<div>
 					<span>{{ .Start }}</span>
+					<span>{{ .Duration }}</span>
 					<span>{{ .Tag }}</span>
 				</div>
 			{{ end }}
