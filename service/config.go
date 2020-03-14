@@ -115,9 +115,9 @@ func (service *ConfigService) Setting(w http.ResponseWriter, req *http.Request) 
 				return
 			}
 		}
-	} else {
-		w.Write([]byte(fmt.Sprintf("Duration: %s\n", service.conf.Duration)))
 	}
+
+	w.Write([]byte(fmt.Sprintf("Duration: %s\n", service.conf.Duration)))
 
 	w.WriteHeader(http.StatusOK)
 }
