@@ -65,6 +65,11 @@ func (clock *Clock) Start(record *ClockRecord) error {
 		if _, err := clock.sender.SendMsg("Please take a rest ~"); err != nil {
 			log.Fatal(err)
 		}
+
+		time.Sleep(5 * time.Minute)
+		if _, err := clock.sender.SendMsg("Resting is finished"); err != nil {
+			log.Fatal(err)
+		}
 	}()
 
 	return nil
