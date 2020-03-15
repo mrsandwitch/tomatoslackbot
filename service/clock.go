@@ -9,9 +9,10 @@ import (
 )
 
 type Clock struct {
-	sender *SenderService
-	db     *DbService
-	conf   *ConfigService
+	sender   *SenderService
+	duration time.Duration
+	db       *DbService
+	conf     *ConfigService
 }
 
 func InitClockService(sender *SenderService, db *DbService, conf *ConfigService) *Clock {
@@ -27,13 +28,13 @@ func (clock *Clock) Destroy() {
 }
 
 func (clock *Clock) Start(record *ClockRecord) error {
-	duration := clock.conf.DurationGet()
+	//duration := clock.conf.DurationGet()
 	t := time.Now()
 	timeFormat := "2006-01-02 15:04:05"
 	text := fmt.Sprintf("Tomato clock start on [%s]", t.Format(timeFormat))
 
 	record.Start = t
-	record.Duration = duration
+	record.Duration = clock.duration
 
 	_, err := clock.sender.SendMsg(text)
 	if err != nil {
@@ -42,10 +43,10 @@ func (clock *Clock) Start(record *ClockRecord) error {
 	}
 
 	go func() {
-		time.Sleep(duration)
+		time.Sleep(clock.duration)
 		t := time.Now()
 
-		text := fmt.Sprintf("Tomato clock finished on [%s]. Elapse[%s]", t.Format(timeFormat), duration.String())
+		text := fmt.Sprintf("Tomato clock finished on [%s]. Elapse[%s]", t.Format(timeFormat), clock.duration.String())
 		if _, err := clock.sender.SendMsg(text); err != nil {
 			log.Fatal(err)
 		}
@@ -91,6 +92,21 @@ func (clock *Clock) TomatoClockStart(w http.ResponseWriter, req *http.Request) {
 			tag = "spare"
 		}
 		desc = strings.Join(splits[1:], " ")
+	}
+
+	// Check if custom duration is included in the command text
+	provideDur := false
+	for _, split := range splits {
+		dur, err := time.ParseDuration(split)
+		if err != nil {
+			continue
+		}
+		provideDur = true
+		clock.duration = dur
+	}
+
+	if !provideDur {
+		clock.duration = clock.conf.DurationGet()
 	}
 
 	record := &ClockRecord{
