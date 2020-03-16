@@ -28,7 +28,6 @@ func (clock *Clock) Destroy() {
 }
 
 func (clock *Clock) Start(record *ClockRecord) error {
-	//duration := clock.conf.DurationGet()
 	t := time.Now()
 	timeFormat := "2006-01-02 15:04:05"
 	text := fmt.Sprintf("Tomato clock start on [%s]. Duration:[%s]", t.Format(timeFormat), clock.duration.String())
@@ -59,11 +58,6 @@ func (clock *Clock) Start(record *ClockRecord) error {
 
 		time.Sleep(3 * time.Second)
 		if _, err := clock.sender.SendMsg("Please take a rest"); err != nil {
-			log.Fatal(err)
-		}
-
-		time.Sleep(4 * time.Second)
-		if _, err := clock.sender.SendMsg("Please take a rest ~"); err != nil {
 			log.Fatal(err)
 		}
 
