@@ -39,25 +39,26 @@ func getTpl() string {
 		<script src="https://cdn.jsdelivr.net/npm/uikit@3.3.6/dist/js/uikit-icons.min.js"></script>
 	</head>
 	<body>
-		<div class="uk-child-width-1-3@m uk-grid-small" uk-grid>
+		<div class="uk-child-width-1-3@m uk-child-width-1-2@s" uk-grid="masonry: true">
 			{{ range .Items }}
-			<div class="uk-card uk-card-default uk-card-body uk-card-small">
-		        <h3 class="uk-card-title">
-					<div class="uk-card-badge uk-label">{{.Count}}</div>
-					{{.Title}} 
-				</h3>
-
-				<table class="uk-table uk-table-small uk-text-nowrap">
-					<tbody>
-						{{range .Readables}}
-						<tr>
-							<td class="uk-width-1-4">{{.Start}}</td>
-							<td class="uk-width-1-4">{{.Duration}}</td>
-							<td class="uk-text-{{.Label}}">{{.Tag}}</td>
-						</tr>
-						{{ end }}
-					</tbody>
-				</table>
+			<div>
+				<div class="uk-card uk-card-default uk-card-body">
+		    	    <h3 class="uk-card-title">
+						<div class="uk-card-badge uk-label">{{.Count}}</div>
+						{{.Title}} 
+					</h3>
+					<table class="uk-table uk-table-small uk-text-nowrap">
+						<tbody>
+							{{range .Readables}}
+							<tr>
+								<td class="uk-width-1-4">{{.Start}}</td>
+								<td class="uk-width-1-4">{{.Duration}}</td>
+								<td class="uk-text-{{.Label}}">{{.Tag}}</td>
+							</tr>
+							{{ end }}
+						</tbody>
+					</table>
+				</div>
 			</div>
 			{{ end }}
 		</div>
