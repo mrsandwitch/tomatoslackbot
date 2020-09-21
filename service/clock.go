@@ -75,7 +75,7 @@ func (clock *Clock) TomatoClockStart(w http.ResponseWriter, req *http.Request) {
 		log.Fatal(err)
 	}
 
-	text := req.PostForm.Get("text")
+	text := req.PostForm.Get("ctlStr")
 	splits := strings.Split(text, " ")
 	var tag, desc string
 

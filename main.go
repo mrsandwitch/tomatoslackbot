@@ -44,7 +44,8 @@ func main() {
 			r.Post("/tomato", clockService.TomatoClockStart)
 			r.Post("/weburl", webService.WebUrlGet)
 			r.Post("/setting", confService.Setting)
-			r.Get("/web", webService.WebShow)
+			r.Get("/record", webService.RecordPage)
+			r.Get("/clock", webService.ClockPage)
 		}
 	})
 

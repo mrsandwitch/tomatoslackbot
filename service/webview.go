@@ -22,7 +22,7 @@ func InitWebviewService(sender *SenderService, db *DbService) *Webview {
 	}
 }
 
-func getTpl() string {
+func getRecordPageTpl() string {
 	return `
 <!DOCTYPE html>
 <html>
@@ -62,6 +62,40 @@ func getTpl() string {
 			</div>
 			{{ end }}
 		</div>
+	</body>
+</html>
+`
+}
+
+func getClockPageTpl() string {
+	return `
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Tomato Clock Record</title>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+
+		<!-- UIkit CSS -->
+		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/uikit@3.3.6/dist/css/uikit.min.css" />
+
+		<!-- UIkit JS -->
+		<script src="https://cdn.jsdelivr.net/npm/uikit@3.3.6/dist/js/uikit.min.js"></script>
+		<script src="https://cdn.jsdelivr.net/npm/uikit@3.3.6/dist/js/uikit-icons.min.js"></script>
+	</head>
+	<body>
+		<iframe name="dummyframe" id="dummyframe" style="display: none;"></iframe>
+
+		<form action="/tomato" method="post" target="dummyframe">
+			<div style="padding:10px;">
+				<button class="uk-button uk-button-default" name="ctlStr" value="w 10m">10 (work)</button>
+				<button class="uk-button uk-button-primary" name="ctlStr" value="s 10m" style="margin-left:10px;">10 (spare)</button>
+			</div>
+			<div style="padding:10px;">
+				<button class="uk-button uk-button-default" name="ctlStr" value="w 25m">25 (work)</button>
+				<button class="uk-button uk-button-primary" name="ctlStr" value="s 25m" style="margin-left:10px;">25 (spare)</button>
+			</div>
+		</form>
 	</body>
 </html>
 `
@@ -157,7 +191,7 @@ func webDataGen(records []ClockRecord) (*WebData, error) {
 	return webData, nil
 }
 
-func (web *Webview) WebShow(w http.ResponseWriter, req *http.Request) {
+func (web *Webview) RecordPage(w http.ResponseWriter, req *http.Request) {
 	records, err := web.db.ClockRecordGet()
 	if err != nil {
 		log.Fatal(err)
@@ -168,7 +202,7 @@ func (web *Webview) WebShow(w http.ResponseWriter, req *http.Request) {
 		log.Fatal(err)
 	}
 
-	tpl := getTpl()
+	tpl := getRecordPageTpl()
 
 	t, err := template.New("webpage").Parse(tpl)
 	if err != nil {
@@ -176,6 +210,20 @@ func (web *Webview) WebShow(w http.ResponseWriter, req *http.Request) {
 	}
 
 	err = t.Execute(w, webData)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func (web *Webview) ClockPage(w http.ResponseWriter, req *http.Request) {
+	tpl := getClockPageTpl()
+
+	t, err := template.New("webpage").Parse(tpl)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = t.Execute(w, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
