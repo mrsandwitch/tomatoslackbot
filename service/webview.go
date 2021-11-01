@@ -2,6 +2,7 @@ package service
 
 import (
 	"bushyang/tomatoslackbot/util"
+	"embed"
 	"fmt"
 	"html/template"
 	"log"
@@ -11,95 +12,97 @@ import (
 )
 
 type Webview struct {
-	sender *SenderService
-	db     *DbService
+	sender    *SenderService
+	db        *DbService
+	templates *embed.FS
 }
 
-func InitWebviewService(sender *SenderService, db *DbService) *Webview {
+func InitWebviewService(sender *SenderService, db *DbService, templates *embed.FS) *Webview {
 	return &Webview{
-		sender: sender,
-		db:     db,
+		sender:    sender,
+		db:        db,
+		templates: templates,
 	}
 }
 
-func getRecordPageTpl() string {
-	return `
-<!DOCTYPE html>
-<html>
-	<head>
-		<title>Tomato Clock Record</title>
-		<meta charset="UTF-8">
-		<meta name="viewport" content="width=device-width, initial-scale=1">
-
-		<!-- UIkit CSS -->
-		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/uikit@3.3.6/dist/css/uikit.min.css" />
-
-		<!-- UIkit JS -->
-		<script src="https://cdn.jsdelivr.net/npm/uikit@3.3.6/dist/js/uikit.min.js"></script>
-		<script src="https://cdn.jsdelivr.net/npm/uikit@3.3.6/dist/js/uikit-icons.min.js"></script>
-	</head>
-	<body>
-		<div class="uk-child-width-1-3@m uk-child-width-1-2@s" uk-grid="masonry: true">
-			{{ range .Items }}
-			<div>
-				<div class="uk-card uk-card-default uk-card-body">
-		    	    <h3 class="uk-card-title">
-						<div class="uk-card-badge uk-label">{{.Count}}</div>
-						{{.Title}} 
-					</h3>
-					<table class="uk-table uk-table-small uk-text-nowrap">
-						<tbody>
-							{{range .Readables}}
-							<tr>
-								<td class="uk-width-1-4">{{.Start}}</td>
-								<td class="uk-width-1-4">{{.Duration}}</td>
-								<td class="uk-text-{{.Label}}">{{.Tag}}</td>
-							</tr>
-							{{ end }}
-						</tbody>
-					</table>
-				</div>
-			</div>
-			{{ end }}
-		</div>
-	</body>
-</html>
-`
-}
-
-func getClockPageTpl() string {
-	return `
-<!DOCTYPE html>
-<html>
-	<head>
-		<title>Tomato Clock Record</title>
-		<meta charset="UTF-8">
-		<meta name="viewport" content="width=device-width, initial-scale=1">
-
-		<!-- UIkit CSS -->
-		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/uikit@3.3.6/dist/css/uikit.min.css" />
-
-		<!-- UIkit JS -->
-		<script src="https://cdn.jsdelivr.net/npm/uikit@3.3.6/dist/js/uikit.min.js"></script>
-		<script src="https://cdn.jsdelivr.net/npm/uikit@3.3.6/dist/js/uikit-icons.min.js"></script>
-	</head>
-	<body>
-		<iframe name="dummyframe" id="dummyframe" style="display: none;"></iframe>
-
-		<form action="/tomato" method="post" target="dummyframe">
-			<div style="padding:10px;">
-				<button class="uk-button uk-button-default" name="ctlStr" value="w 10m">10 (work)</button>
-				<button class="uk-button uk-button-primary" name="ctlStr" value="s 10m" style="margin-left:10px;">10 (spare)</button>
-			</div>
-			<div style="padding:10px;">
-				<button class="uk-button uk-button-default" name="ctlStr" value="w 25m">25 (work)</button>
-				<button class="uk-button uk-button-primary" name="ctlStr" value="s 25m" style="margin-left:10px;">25 (spare)</button>
-			</div>
-		</form>
-	</body>
-</html>
-`
-}
+//func getRecordPageTpl() string {
+//	return `
+//<!DOCTYPE html>
+//<html>
+//	<head>
+//		<title>Tomato Clock Record</title>
+//		<meta charset="UTF-8">
+//		<meta name="viewport" content="width=device-width, initial-scale=1">
+//
+//		<!-- UIkit CSS -->
+//		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/uikit@3.3.6/dist/css/uikit.min.css" />
+//
+//		<!-- UIkit JS -->
+//		<script src="https://cdn.jsdelivr.net/npm/uikit@3.3.6/dist/js/uikit.min.js"></script>
+//		<script src="https://cdn.jsdelivr.net/npm/uikit@3.3.6/dist/js/uikit-icons.min.js"></script>
+//	</head>
+//	<body>
+//		<div class="uk-child-width-1-3@m uk-child-width-1-2@s" uk-grid="masonry: true">
+//			{{ range .Items }}
+//			<div>
+//				<div class="uk-card uk-card-default uk-card-body">
+//		    	    <h3 class="uk-card-title">
+//						<div class="uk-card-badge uk-label">{{.Count}}</div>
+//						{{.Title}} 
+//					</h3>
+//					<table class="uk-table uk-table-small uk-text-nowrap">
+//						<tbody>
+//							{{range .Readables}}
+//							<tr>
+//								<td class="uk-width-1-4">{{.Start}}</td>
+//								<td class="uk-width-1-4">{{.Duration}}</td>
+//								<td class="uk-text-{{.Label}}">{{.Tag}}</td>
+//							</tr>
+//							{{ end }}
+//						</tbody>
+//					</table>
+//				</div>
+//			</div>
+//			{{ end }}
+//		</div>
+//	</body>
+//</html>
+//`
+//}
+//
+//func getClockPageTpl() string {
+//	return `
+//<!DOCTYPE html>
+//<html>
+//	<head>
+//		<title>Tomato Clock Record</title>
+//		<meta charset="UTF-8">
+//		<meta name="viewport" content="width=device-width, initial-scale=1">
+//
+//		<!-- UIkit CSS -->
+//		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/uikit@3.3.6/dist/css/uikit.min.css" />
+//
+//		<!-- UIkit JS -->
+//		<script src="https://cdn.jsdelivr.net/npm/uikit@3.3.6/dist/js/uikit.min.js"></script>
+//		<script src="https://cdn.jsdelivr.net/npm/uikit@3.3.6/dist/js/uikit-icons.min.js"></script>
+//	</head>
+//	<body>
+//		<iframe name="dummyframe" id="dummyframe" style="display: none;"></iframe>
+//
+//		<form action="/tomato" method="post" target="dummyframe">
+//			<div style="padding:10px;">
+//				<button class="uk-button uk-button-default" name="ctlStr" value="w 10m">10 (work)</button>
+//				<button class="uk-button uk-button-primary" name="ctlStr" value="s 10m" style="margin-left:10px;">10 (spare)</button>
+//			</div>
+//			<div style="padding:10px;">
+//				<button class="uk-button uk-button-default" name="ctlStr" value="w 25m">25 (work)</button>
+//				<button class="uk-button uk-button-primary" name="ctlStr" value="s 25m" style="margin-left:10px;">25 (spare)</button>
+//			</div>
+//		</form>
+//	</body>
+//</html>
+//`
+//}
 
 type recordReadable struct {
 	Start    string
@@ -191,43 +194,43 @@ func webDataGen(records []ClockRecord) (*WebData, error) {
 	return webData, nil
 }
 
-func (web *Webview) RecordPage(w http.ResponseWriter, req *http.Request) {
-	records, err := web.db.ClockRecordGet()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	webData, err := webDataGen(records)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	tpl := getRecordPageTpl()
-
-	t, err := template.New("webpage").Parse(tpl)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	err = t.Execute(w, webData)
-	if err != nil {
-		log.Fatal(err)
-	}
-}
-
-func (web *Webview) ClockPage(w http.ResponseWriter, req *http.Request) {
-	tpl := getClockPageTpl()
-
-	t, err := template.New("webpage").Parse(tpl)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	err = t.Execute(w, nil)
-	if err != nil {
-		log.Fatal(err)
-	}
-}
+//func (web *Webview) RecordPage(w http.ResponseWriter, req *http.Request) {
+//	records, err := web.db.ClockRecordGet()
+//	if err != nil {
+//		log.Fatal(err)
+//	}
+//
+//	webData, err := webDataGen(records)
+//	if err != nil {
+//		log.Fatal(err)
+//	}
+//
+//	tpl := getRecordPageTpl()
+//
+//	t, err := template.New("webpage").Parse(tpl)
+//	if err != nil {
+//		log.Fatal(err)
+//	}
+//
+//	err = t.Execute(w, webData)
+//	if err != nil {
+//		log.Fatal(err)
+//	}
+//}
+//
+//func (web *Webview) ClockPage(w http.ResponseWriter, req *http.Request) {
+//	tpl := getClockPageTpl()
+//
+//	t, err := template.New("webpage").Parse(tpl)
+//	if err != nil {
+//		log.Fatal(err)
+//	}
+//
+//	err = t.Execute(w, nil)
+//	if err != nil {
+//		log.Fatal(err)
+//	}
+//}
 
 func (web *Webview) WebUrlGet(w http.ResponseWriter, req *http.Request) {
 	uri, err := util.GetDefaultUri()
@@ -241,5 +244,36 @@ func (web *Webview) WebUrlGet(w http.ResponseWriter, req *http.Request) {
 	_, err = web.sender.SendMsg(text)
 	if err != nil {
 		log.Println(err)
+	}
+}
+
+func (web *Webview) TestPage(w http.ResponseWriter, req *http.Request) {
+	records, err := web.db.ClockRecordGet()
+	if err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	webData, err := webDataGen(records)
+	if err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	t, err := template.ParseFS(web.templates, "templates/index.html")
+	if err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "text/html")
+	w.WriteHeader(http.StatusOK)
+
+	err = t.Execute(w, webData)
+	if err != nil {
+		log.Println(err)
+		return
 	}
 }

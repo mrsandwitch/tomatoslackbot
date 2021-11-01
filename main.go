@@ -2,19 +2,26 @@ package main
 
 import (
 	"bushyang/tomatoslackbot/service"
+	"embed"
 	"flag"
 	"fmt"
-	"github.com/go-chi/chi"
-	"github.com/go-chi/chi/middleware"
 	"log"
 	"net/http"
+
+	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/middleware"
 )
 
-var inHookUrl = flag.String("in_hook_url", "", "Incomming hool url")
 var ip = flag.String("ip", "0.0.0.0", "server ip")
 var rootDir = flag.String("root_dir", "/root/workspace", "root directory")
 
 var port = flag.Int("port", 8000, "server port")
+
+//go:embed templates/*
+var templates embed.FS
+
+//go:embed assets/*
+var assets embed.FS
 
 func main() {
 	flag.Parse()
@@ -30,10 +37,10 @@ func main() {
 	}
 	defer dbService.Close()
 
-	confService := service.InitConfigService(*inHookUrl)
+	confService := service.InitConfigService()
 	senderService := service.InitSenderService(confService)
 	clockService := service.InitClockService(senderService, dbService, confService)
-	webService := service.InitWebviewService(senderService, dbService)
+	webService := service.InitWebviewService(senderService, dbService, &templates)
 
 	//-- Test function
 	//senderService.SendMsg("hello2")
@@ -44,8 +51,10 @@ func main() {
 			r.Post("/tomato", clockService.TomatoClockStart)
 			r.Post("/weburl", webService.WebUrlGet)
 			r.Post("/setting", confService.Setting)
-			r.Get("/record", webService.RecordPage)
-			r.Get("/clock", webService.ClockPage)
+			//r.Get("/record", webService.RecordPage)
+			//r.Get("/clock", webService.ClockPage)
+			r.Get("/test", webService.TestPage)
+			r.Handle("/assets/*", http.FileServer(http.FS(assets)))
 		}
 	})
 

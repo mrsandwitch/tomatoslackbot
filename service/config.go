@@ -22,20 +22,16 @@ type Config struct {
 	Duration         string `json:"duration"`
 }
 
-func InitConfigService(incommingHookUrl string) *ConfigService {
+func InitConfigService() *ConfigService {
 	service := &ConfigService{}
 
 	// Save and load config
 	if err := service.read(); err != nil {
-		log.Println("Please set incomming hook url")
 		log.Fatal(err)
 	}
 
-	if incommingHookUrl != "" {
-		service.conf.IncommingHookUrl = incommingHookUrl
-		if err := service.save(); err != nil {
-			log.Fatal(err)
-		}
+	if service.conf.IncommingHookUrl == "" {
+		log.Fatal("Please manually set config hook url")
 	}
 
 	return service
@@ -77,12 +73,21 @@ func (service *ConfigService) save() error {
 
 func (service *ConfigService) read() error {
 	js, err := ioutil.ReadFile(util.GetConfigPath())
-	if err != nil {
+	if os.IsNotExist(err) {
+		service.conf = Config{}
+		err2 := service.save()
+		if err2 != nil {
+			log.Println(err2)
+			return err2
+		}
+	} else if err != nil {
+		log.Println(err)
 		return err
 	}
 
 	err = json.Unmarshal(js, &service.conf)
 	if err != nil {
+		log.Println(err)
 		return err
 	}
 
