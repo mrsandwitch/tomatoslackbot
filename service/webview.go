@@ -2,9 +2,9 @@ package service
 
 import (
 	"bushyang/tomatoslackbot/util"
-	"embed"
 	"fmt"
 	"html/template"
+	"io/fs"
 	"log"
 	"net/http"
 	"sort"
@@ -14,10 +14,10 @@ import (
 type Webview struct {
 	sender    *SenderService
 	db        *DbService
-	templates *embed.FS
+	templates fs.FS
 }
 
-func InitWebviewService(sender *SenderService, db *DbService, templates *embed.FS) *Webview {
+func InitWebviewService(sender *SenderService, db *DbService, templates fs.FS) *Webview {
 	return &Webview{
 		sender:    sender,
 		db:        db,
@@ -48,7 +48,7 @@ func InitWebviewService(sender *SenderService, db *DbService, templates *embed.F
 //				<div class="uk-card uk-card-default uk-card-body">
 //		    	    <h3 class="uk-card-title">
 //						<div class="uk-card-badge uk-label">{{.Count}}</div>
-//						{{.Title}} 
+//						{{.Title}}
 //					</h3>
 //					<table class="uk-table uk-table-small uk-text-nowrap">
 //						<tbody>

@@ -5,6 +5,7 @@ import (
 	"embed"
 	"flag"
 	"fmt"
+	"io/fs"
 	"log"
 	"net/http"
 
@@ -17,11 +18,12 @@ var rootDir = flag.String("root_dir", "/root/workspace", "root directory")
 
 var port = flag.Int("port", 8000, "server port")
 
-//go:embed templates/*
+//go:embed web_app/templates/*
 var templates embed.FS
-
-//go:embed assets/*
+//go:embed web_app/assets/*
 var assets embed.FS
+//go:embed web_app/src/*
+var webSrc embed.FS
 
 func main() {
 	flag.Parse()
@@ -37,10 +39,23 @@ func main() {
 	}
 	defer dbService.Close()
 
+	assetRootFs, err := fs.Sub(assets, "web_app")
+	if err != nil {
+		log.Fatal(err)
+	}
+	templateRootFs, err := fs.Sub(templates, "web_app")
+	if err != nil {
+		log.Fatal(err)
+	}
+	webSrcRootFs, err := fs.Sub(webSrc, "web_app")
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	confService := service.InitConfigService()
 	senderService := service.InitSenderService(confService)
 	clockService := service.InitClockService(senderService, dbService, confService)
-	webService := service.InitWebviewService(senderService, dbService, &templates)
+	webService := service.InitWebviewService(senderService, dbService, templateRootFs)
 
 	//-- Test function
 	//senderService.SendMsg("hello2")
@@ -54,7 +69,8 @@ func main() {
 			//r.Get("/record", webService.RecordPage)
 			//r.Get("/clock", webService.ClockPage)
 			r.Get("/test", webService.TestPage)
-			r.Handle("/assets/*", http.FileServer(http.FS(assets)))
+			r.Handle("/assets/*", http.FileServer(http.FS(assetRootFs)))
+			r.Handle("/src/*", http.FileServer(http.FS(webSrcRootFs)))
 		}
 	})
 
