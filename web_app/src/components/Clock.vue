@@ -1,35 +1,33 @@
 <template>
-  <iframe name="dummyframe" id="dummyframe" style="display: none"></iframe>
-
   <div class="clock-container">
-    <form action="/tomato" method="post" target="dummyframe">
-      <div style="padding: 10px">
-        <button class="uk-button uk-button-default" name="ctlStr" value="w 10m">
-          10 (work)
-        </button>
-        <button
-          class="uk-button uk-button-primary"
-          name="ctlStr"
-          value="s 10m"
-          style="margin-left: 10px"
-        >
-          10 (spare)
-        </button>
-      </div>
-      <div style="padding: 10px">
-        <button class="uk-button uk-button-default" name="ctlStr" value="w 25m">
-          25 (work)
-        </button>
-        <button
-          class="uk-button uk-button-primary"
-          name="ctlStr"
-          value="s 25m"
-          style="margin-left: 10px"
-        >
-          25 (spare)
-        </button>
-      </div>
-    </form>
+    <div class="button-row">
+      <button
+        class="uk-button uk-button-default"
+        v-on:click="clockStart('10m', true)"
+      >
+        10 (work)
+      </button>
+      <button
+        class="uk-button uk-button-primary"
+        v-on:click="clockStart('10m', false)"
+      >
+        10 (spare)
+      </button>
+    </div>
+    <div class="button-row">
+      <button
+        class="uk-button uk-button-default"
+        v-on:click="clockStart('25m', true)"
+      >
+        25 (work)
+      </button>
+      <button
+        class="uk-button uk-button-primary"
+        v-on:click="clockStart('25m', false)"
+      >
+        25 (spare)
+      </button>
+    </div>
   </div>
 
   <hr class="uk-divider-icon" />
@@ -83,6 +81,7 @@
 <script>
 import axios from "axios";
 import { ref, onMounted } from "vue";
+const apiUrl = "http://localhost:8000";
 
 export default {
   //   name: "Clock",
@@ -100,7 +99,7 @@ export default {
     const getRecords = async () => {
       try {
         items.value = await axios
-          .get(`http://localhost:8000/api/records`)
+          .get(apiUrl + "/api/records")
           .then((resp) => resp.data.Items);
       } catch (e) {
         console.log(e);
@@ -116,10 +115,15 @@ export default {
     };
   },
   methods: {
-    test2() {
-      axios
-        .get(`http://localhost:8000/api/records`)
-        .then((resp) => (this.items = resp.data.items));
+    async clockStart(time, forWork) {
+      console.log((forWork ? "w" : "s") + " " + time);
+      try {
+        await axios.post(apiUrl + "/tomato", {
+          ctlStr: (forWork ? "w" : "s") + " " + time,
+        });
+      } catch (e) {
+        console.log(e);
+      }
     },
   },
 };
@@ -128,9 +132,16 @@ export default {
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped>
 .clock-container {
-  padding: 20px;
+  padding: 40px 20px 0px 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+.button-row {
   display: flex;
   justify-content: center;
+  padding: 10px;
+  gap: 10px;
 }
 
 .ongoing-clock-container {

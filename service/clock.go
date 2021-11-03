@@ -1,12 +1,17 @@
 package service
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"strings"
 	"time"
 )
+
+type clockReq struct {
+	CtlStr string `json:"ctlStr"`
+}
 
 type Clock struct {
 	sender   *SenderService
@@ -71,12 +76,14 @@ func (clock *Clock) Start(record *ClockRecord) error {
 }
 
 func (clock *Clock) TomatoClockStart(w http.ResponseWriter, req *http.Request) {
-	if err := req.ParseForm(); err != nil {
-		log.Fatal(err)
+	clockReq := clockReq{}
+	err := json.NewDecoder(req.Body).Decode(&clockReq)
+	if err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
-
-	text := req.PostForm.Get("ctlStr")
-	splits := strings.Split(text, " ")
+	splits := strings.Split(clockReq.CtlStr, " ")
 	var tag, desc string
 
 	if len(splits) > 0 {
@@ -108,7 +115,7 @@ func (clock *Clock) TomatoClockStart(w http.ResponseWriter, req *http.Request) {
 		Desc: desc,
 	}
 
-	err := clock.Start(record)
+	err = clock.Start(record)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
