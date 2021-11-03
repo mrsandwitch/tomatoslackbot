@@ -19,15 +19,6 @@ var rootDir = flag.String("root_dir", "/root/workspace", "root directory")
 
 var port = flag.Int("port", 8000, "server port")
 
-//go:embed web_app/templates/*
-var templates embed.FS
-
-//go:embed web_app/assets/*
-var assets embed.FS
-
-//go:embed web_app/src/*
-var webSrc embed.FS
-
 //go:embed dist/*
 var webDist embed.FS
 
@@ -45,18 +36,6 @@ func main() {
 	}
 	defer dbService.Close()
 
-	assetRootFs, err := fs.Sub(assets, "web_app")
-	if err != nil {
-		log.Fatal(err)
-	}
-	templateRootFs, err := fs.Sub(templates, "web_app/templates")
-	if err != nil {
-		log.Fatal(err)
-	}
-	webSrcRootFs, err := fs.Sub(webSrc, "web_app")
-	if err != nil {
-		log.Fatal(err)
-	}
 	webDistRootFs, err := fs.Sub(webDist, "dist")
 	if err != nil {
 		log.Fatal(err)
@@ -65,7 +44,7 @@ func main() {
 	confService := service.InitConfigService()
 	senderService := service.InitSenderService(confService)
 	clockService := service.InitClockService(senderService, dbService, confService)
-	webService := service.InitWebviewService(senderService, dbService, templateRootFs)
+	webService := service.InitWebviewService(senderService, dbService)
 
 	corsHandler := cors.Handler(cors.Options{
 		AllowedOrigins:   []string{"https://*", "http://*"},
@@ -85,8 +64,8 @@ func main() {
 			//r.Get("/record", webService.RecordPage)
 			//r.Get("/clock", webService.ClockPage)
 			//r.Get("/test", webService.TestPage)
-			r.Handle("/assets/*", http.FileServer(http.FS(assetRootFs)))
-			r.Handle("/src/*", http.FileServer(http.FS(webSrcRootFs)))
+			//r.Handle("/assets/*", http.FileServer(http.FS(assetRootFs)))
+			//r.Handle("/src/*", http.FileServer(http.FS(webSrcRootFs)))
 			//r.Handle("/", http.FileServer(http.FS(templateRootFs)))
 			r.Handle("/*", http.FileServer(http.FS(webDistRootFs)))
 			r.Get("/api/records", webService.RecordGet)

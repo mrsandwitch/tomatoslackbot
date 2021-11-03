@@ -2,6 +2,7 @@ package service
 
 import (
 	"bushyang/tomatoslackbot/util"
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"io/fs"
@@ -17,11 +18,10 @@ type Webview struct {
 	templates fs.FS
 }
 
-func InitWebviewService(sender *SenderService, db *DbService, templates fs.FS) *Webview {
+func InitWebviewService(sender *SenderService, db *DbService) *Webview {
 	return &Webview{
-		sender:    sender,
-		db:        db,
-		templates: templates,
+		sender: sender,
+		db:     db,
 	}
 }
 
@@ -274,6 +274,39 @@ func (web *Webview) TestPage(w http.ResponseWriter, req *http.Request) {
 	err = t.Execute(w, webData)
 	if err != nil {
 		log.Println(err)
+		return
+	}
+}
+
+func (web *Webview) RecordGet(w http.ResponseWriter, req *http.Request) {
+	records, err := web.db.ClockRecordGet()
+	if err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	webData, err := webDataGen(records)
+	if err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	jsonData, err := json.Marshal(webData)
+	if err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	_, err = w.Write(jsonData)
+	if err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 }
