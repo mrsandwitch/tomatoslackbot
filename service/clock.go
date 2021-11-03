@@ -15,7 +15,6 @@ type clockReq struct {
 
 type Clock struct {
 	sender   *SenderService
-	duration time.Duration
 	db       *DbService
 	conf     *ConfigService
 }
@@ -32,13 +31,14 @@ func (clock *Clock) Destroy() {
 	clock.db.Close()
 }
 
-func (clock *Clock) Start(record *ClockRecord) error {
+func (clock *Clock) start(record *ClockRecord, duration time.Duration) error {
 	t := time.Now()
 	timeFormat := "2006-01-02 15:04:05"
-	text := fmt.Sprintf("Tomato clock start on [%s]. Duration:[%s]", t.Format(timeFormat), clock.duration.String())
+	text := fmt.Sprintf("Tomato clock start on [%s]. Duration:[%s]", t.Format(timeFormat), duration.String())
+	fmt.Println(text)
 
 	record.Start = t
-	record.Duration = clock.duration
+	record.Duration = duration
 
 	_, err := clock.sender.SendMsg(text)
 	if err != nil {
@@ -47,10 +47,11 @@ func (clock *Clock) Start(record *ClockRecord) error {
 	}
 
 	go func() {
-		time.Sleep(clock.duration)
+		time.Sleep(duration)
 		t := time.Now()
 
-		text := fmt.Sprintf("Tomato clock finished on [%s]. Elapse[%s]", t.Format(timeFormat), clock.duration.String())
+		text := fmt.Sprintf("Tomato clock finished on [%s]. Elapse[%s]", t.Format(timeFormat), duration.String())
+		fmt.Println(text)
 		if _, err := clock.sender.SendMsg(text); err != nil {
 			log.Fatal(err)
 		}
@@ -97,17 +98,18 @@ func (clock *Clock) TomatoClockStart(w http.ResponseWriter, req *http.Request) {
 
 	// Check if custom duration is included in the command text
 	provideDur := false
+	var duration time.Duration
 	for _, split := range splits {
 		dur, err := time.ParseDuration(split)
 		if err != nil {
 			continue
 		}
 		provideDur = true
-		clock.duration = dur
+		duration = dur
 	}
 
 	if !provideDur {
-		clock.duration = clock.conf.DurationGet()
+		duration = clock.conf.DurationGet()
 	}
 
 	record := &ClockRecord{
@@ -115,7 +117,7 @@ func (clock *Clock) TomatoClockStart(w http.ResponseWriter, req *http.Request) {
 		Desc: desc,
 	}
 
-	err = clock.Start(record)
+	err = clock.start(record, duration)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
