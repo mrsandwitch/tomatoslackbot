@@ -61,12 +61,6 @@ func main() {
 			r.Post("/tomato", clockService.TomatoClockStart)
 			r.Post("/weburl", webService.WebUrlGet)
 			r.Post("/setting", confService.Setting)
-			//r.Get("/record", webService.RecordPage)
-			//r.Get("/clock", webService.ClockPage)
-			//r.Get("/test", webService.TestPage)
-			//r.Handle("/assets/*", http.FileServer(http.FS(assetRootFs)))
-			//r.Handle("/src/*", http.FileServer(http.FS(webSrcRootFs)))
-			//r.Handle("/", http.FileServer(http.FS(templateRootFs)))
 			r.Handle("/*", http.FileServer(http.FS(webDistRootFs)))
 			r.Get("/api/records", webService.RecordGet)
 		}

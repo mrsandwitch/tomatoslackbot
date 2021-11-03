@@ -1,3 +1,4 @@
 tomatoslackbot
 build
 dist
+*.exe
