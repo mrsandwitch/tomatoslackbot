@@ -63,6 +63,7 @@ func main() {
 			r.Post("/setting", confService.Setting)
 			r.Handle("/*", http.FileServer(http.FS(webDistRootFs)))
 			r.Get("/api/records", webService.RecordGet)
+			r.Get("/api/clocks", clockService.RunningClockGet)
 		}
 	})
 

@@ -6,6 +6,8 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -13,70 +15,137 @@ type clockReq struct {
 	CtlStr string `json:"ctlStr"`
 }
 
-type Clock struct {
-	sender   *SenderService
-	db       *DbService
-	conf     *ConfigService
+type runningClock struct {
+	Id        uint64
+	StartTime time.Time
+	Duration  time.Duration
+	Tag       string
+	Desc      string
 }
 
-func InitClockService(sender *SenderService, db *DbService, conf *ConfigService) *Clock {
-	return &Clock{
+type ClockService struct {
+	sender        *SenderService
+	db            *DbService
+	conf          *ConfigService
+	runningClocks sync.Map
+	isChecking    uint32
+	clockId       uint64
+}
+
+const timeFormat = "2006-01-02 15:04:05"
+
+func InitClockService(sender *SenderService, db *DbService, conf *ConfigService) (service *ClockService) {
+	service = &ClockService{
 		sender: sender,
 		db:     db,
 		conf:   conf,
 	}
+	return
 }
 
-func (clock *Clock) Destroy() {
-	clock.db.Close()
+func (service *ClockService) checkExpire() {
+	swap := atomic.CompareAndSwapUint32(&service.isChecking, 0, 1)
+	if !swap {
+		return
+	}
+
+	minDur := time.Duration(0)
+	currTime := time.Now()
+	var remain int
+
+	service.runningClocks.Range(func(key interface{}, val interface{}) bool {
+		clock, ok := val.(runningClock)
+		if !ok {
+			return true
+		}
+		if clock.StartTime.Add(clock.Duration).Before(currTime) {
+			service.runningClocks.Delete(clock.Id)
+
+			err := service.finishNotification(clock)
+			if err != nil {
+				log.Println(err)
+				return true
+			}
+		} else {
+			remain += 1
+			expireTime := clock.StartTime.Add(clock.Duration).Sub(currTime)
+			if expireTime > minDur {
+				minDur = expireTime
+			}
+		}
+
+		return true
+	})
+
+	atomic.StoreUint32(&service.isChecking, 0)
+	if remain > 0 {
+		time.AfterFunc(minDur, func() {
+			service.checkExpire()
+		})
+	}
 }
 
-func (clock *Clock) start(record *ClockRecord, duration time.Duration) error {
+func (service *ClockService) Destroy() {
+	service.db.Close()
+}
+
+func (service *ClockService) finishNotification(clock runningClock) (err error) {
+	t := time.Now()
+
+	text := fmt.Sprintf("Tomato clock finished on [%s]. Elapse[%s]", t.Format(timeFormat), clock.Duration.String())
+	log.Println(text)
+	if _, err := service.sender.SendMsg(text); err != nil {
+		log.Println(err)
+	}
+
+	record := ClockRecord{
+		Start:    clock.StartTime,
+		Duration: clock.Duration,
+		Tag:      clock.Tag,
+		Desc:     clock.Desc,
+	}
+
+	// Record into database
+	err = service.db.ClockRecordAdd(record)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	time.Sleep(3 * time.Second)
+	if _, err := service.sender.SendMsg("Please take a rest"); err != nil {
+		log.Println(err)
+	}
+
+	time.Sleep(5 * time.Minute)
+	if _, err := service.sender.SendMsg("Resting is finished"); err != nil {
+		log.Println(err)
+	}
+	return
+}
+
+func (service *ClockService) AddClock(record *ClockRecord, duration time.Duration) (err error) {
 	t := time.Now()
 	timeFormat := "2006-01-02 15:04:05"
 	text := fmt.Sprintf("Tomato clock start on [%s]. Duration:[%s]", t.Format(timeFormat), duration.String())
-	fmt.Println(text)
+	log.Println(text)
 
 	record.Start = t
 	record.Duration = duration
 
-	_, err := clock.sender.SendMsg(text)
+	_, err = service.sender.SendMsg(text)
 	if err != nil {
 		log.Println(err)
-		return err
 	}
 
-	go func() {
-		time.Sleep(duration)
-		t := time.Now()
+	atomic.AddUint64(&service.clockId, 1)
+	clock := runningClock{Id: service.clockId, StartTime: t, Duration: duration}
+	service.runningClocks.Store(service.clockId, clock)
+	service.checkExpire()
 
-		text := fmt.Sprintf("Tomato clock finished on [%s]. Elapse[%s]", t.Format(timeFormat), duration.String())
-		fmt.Println(text)
-		if _, err := clock.sender.SendMsg(text); err != nil {
-			log.Fatal(err)
-		}
-
-		// Record into database
-		err := clock.db.ClockRecordAdd(*record)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		time.Sleep(3 * time.Second)
-		if _, err := clock.sender.SendMsg("Please take a rest"); err != nil {
-			log.Fatal(err)
-		}
-
-		time.Sleep(5 * time.Minute)
-		if _, err := clock.sender.SendMsg("Resting is finished"); err != nil {
-			log.Fatal(err)
-		}
-	}()
-
-	return nil
+	return
 }
 
-func (clock *Clock) TomatoClockStart(w http.ResponseWriter, req *http.Request) {
+func (service *ClockService) TomatoClockStart(w http.ResponseWriter, req *http.Request) {
 	clockReq := clockReq{}
 	err := json.NewDecoder(req.Body).Decode(&clockReq)
 	if err != nil {
@@ -109,7 +178,7 @@ func (clock *Clock) TomatoClockStart(w http.ResponseWriter, req *http.Request) {
 	}
 
 	if !provideDur {
-		duration = clock.conf.DurationGet()
+		duration = service.conf.DurationGet()
 	}
 
 	record := &ClockRecord{
@@ -117,11 +186,42 @@ func (clock *Clock) TomatoClockStart(w http.ResponseWriter, req *http.Request) {
 		Desc: desc,
 	}
 
-	err = clock.start(record, duration)
+	err = service.AddClock(record, duration)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
+}
+
+func (service *ClockService) RunningClockGet(w http.ResponseWriter, req *http.Request) {
+	var clocks []runningClock
+
+	service.runningClocks.Range(func(key interface{}, val interface{}) bool {
+		clock, ok := val.(runningClock)
+		if !ok {
+			return true
+		}
+		clocks = append(clocks, clock)
+
+		return true
+	})
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	jsonData, err := json.Marshal(clocks)
+	if err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	_, err = w.Write(jsonData)
+	if err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 }

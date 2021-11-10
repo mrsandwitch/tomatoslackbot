@@ -3,13 +3,13 @@
     <div class="button-row">
       <button
         class="uk-button uk-button-default"
-        v-on:click="clockStart('10m', true)"
+        v-on:click="clockStartAndRefetch('10m', true)"
       >
         10 (work)
       </button>
       <button
         class="uk-button uk-button-primary"
-        v-on:click="clockStart('10m', false)"
+        v-on:click="clockStartAndRefetch('10m', false)"
       >
         10 (spare)
       </button>
@@ -17,13 +17,13 @@
     <div class="button-row">
       <button
         class="uk-button uk-button-default"
-        v-on:click="clockStart('25m', true)"
+        v-on:click="clockStartAndRefetch('25m', true)"
       >
         25 (work)
       </button>
       <button
         class="uk-button uk-button-primary"
-        v-on:click="clockStart('25m', false)"
+        v-on:click="clockStartAndRefetch('25m', false)"
       >
         25 (spare)
       </button>
@@ -33,17 +33,7 @@
   <hr class="uk-divider-icon" />
 
   <div class="ongoing-clock-container">
-    <div class="ongoing-clock-row">
-      <div uk-countdown="date: 2021-10-10T12:27:56+00:00">
-        <span class="uk-countdown-number uk-countdown-minutes"></span>
-        :
-        <span class="uk-countdown-number uk-countdown-seconds"></span>
-      </div>
-      <button class="uk-button uk-button-primary" name="stop" value="stop">
-        stop
-      </button>
-    </div>
-    <div class="ongoing-clock-row">
+    <div v-for="clock in clocks" v-bind:key="clock" class="ongoing-clock-row">
       <div uk-countdown="date: 2021-10-10T12:27:56+00:00">
         <span class="uk-countdown-number uk-countdown-minutes"></span>
         :
@@ -84,17 +74,9 @@ import { ref, onMounted } from "vue";
 const apiUrl = "http://localhost:8000";
 
 export default {
-  //   name: "Clock",
-  //   props: {
-  //     msg: String,
-  //   },
-  //data() {
-  //  //return {
-  //  //  items: null,
-  //  //};
-  //},
   setup() {
     const items = ref([]);
+    const clocks = ref([]);
 
     const getRecords = async () => {
       try {
@@ -105,18 +87,28 @@ export default {
         console.log(e);
       }
     };
+    const getClocks = async () => {
+      try {
+        clocks.value = await axios
+          .get(apiUrl + "/api/clocks")
+          .then((resp) => resp.data);
+      } catch (e) {
+        console.log(e);
+      }
+    };
 
     onMounted(() => {
       getRecords();
+      getClocks();
     });
 
     return {
       items,
+      clocks,
     };
   },
   methods: {
     async clockStart(time, forWork) {
-      console.log((forWork ? "w" : "s") + " " + time);
       try {
         await axios.post(apiUrl + "/tomato", {
           ctlStr: (forWork ? "w" : "s") + " " + time,
@@ -125,6 +117,25 @@ export default {
         console.log(e);
       }
     },
+    async sleep(time) {
+      await new Promise(resolve => setTimeout(resolve, time))
+    },
+    async runningClockGet() {
+      try {
+        return await axios.get(apiUrl + "/api/clocks")
+          .then((resp) => resp.data);
+      } catch (e) {
+        console.log(e);
+      }
+    },
+    async clockStartAndRefetch(time, forWork) {
+      this.clocks = await Promise.all([
+        this.clockStart(time, forWork),
+        this.sleep(100),
+        this.runningClockGet()])
+          .then(result => result[2])
+    }
+    
   },
 };
 </script>
