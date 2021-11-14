@@ -49,7 +49,7 @@ func (service *ClockService) checkExpire() {
 		return
 	}
 
-	minDur := time.Duration(0)
+	minDur := 24 * time.Hour
 	currTime := time.Now()
 	var remain int
 
@@ -61,15 +61,27 @@ func (service *ClockService) checkExpire() {
 		if clock.StartTime.Add(clock.Duration).Before(currTime) {
 			service.runningClocks.Delete(clock.Id)
 
-			err := service.finishNotification(clock)
+			record := ClockRecord{
+				Start:    clock.StartTime,
+				Duration: clock.Duration,
+				Tag:      clock.Tag,
+				Desc:     clock.Desc,
+			}
+			err := service.db.ClockRecordAdd(record)
 			if err != nil {
 				log.Println(err)
-				return true
 			}
+
+			go func() {
+				err := service.finishNotification(clock)
+				if err != nil {
+					log.Println(err)
+				}
+			}()
 		} else {
 			remain += 1
 			expireTime := clock.StartTime.Add(clock.Duration).Sub(currTime)
-			if expireTime > minDur {
+			if expireTime < minDur {
 				minDur = expireTime
 			}
 		}
@@ -94,32 +106,13 @@ func (service *ClockService) finishNotification(clock runningClock) (err error) 
 
 	text := fmt.Sprintf("Tomato clock finished on [%s]. Elapse[%s]", t.Format(timeFormat), clock.Duration.String())
 	log.Println(text)
-	if _, err := service.sender.SendMsg(text); err != nil {
-		log.Println(err)
-	}
-
-	record := ClockRecord{
-		Start:    clock.StartTime,
-		Duration: clock.Duration,
-		Tag:      clock.Tag,
-		Desc:     clock.Desc,
-	}
-
-	// Record into database
-	err = service.db.ClockRecordAdd(record)
-	if err != nil {
-		log.Fatal(err)
-	}
+	service.sender.SendMsg(text)
 
 	time.Sleep(3 * time.Second)
-	if _, err := service.sender.SendMsg("Please take a rest"); err != nil {
-		log.Println(err)
-	}
+	service.sender.SendMsg("Please take a rest")
 
 	time.Sleep(5 * time.Minute)
-	if _, err := service.sender.SendMsg("Resting is finished"); err != nil {
-		log.Println(err)
-	}
+	service.sender.SendMsg("Resting is finished")
 	return
 }
 
@@ -132,15 +125,14 @@ func (service *ClockService) AddClock(record *ClockRecord, duration time.Duratio
 	record.Start = t
 	record.Duration = duration
 
-	_, err = service.sender.SendMsg(text)
-	if err != nil {
-		log.Println(err)
-	}
-
 	atomic.AddUint64(&service.clockId, 1)
-	clock := runningClock{Id: service.clockId, StartTime: t, Duration: duration}
+	clock := runningClock{
+		Id: service.clockId, StartTime: t, Duration: duration, Tag: record.Tag, Desc: record.Desc}
 	service.runningClocks.Store(service.clockId, clock)
-	service.checkExpire()
+	go func() {
+		service.sender.SendMsg(text)
+		service.checkExpire()
+	}()
 
 	return
 }

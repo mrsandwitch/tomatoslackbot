@@ -25,7 +25,7 @@ var webDist embed.FS
 func main() {
 	flag.Parse()
 
-	log.SetFlags(log.Lshortfile)
+	log.SetFlags(log.Lshortfile | log.LstdFlags)
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)

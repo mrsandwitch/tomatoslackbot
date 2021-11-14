@@ -34,11 +34,7 @@
 
   <div class="ongoing-clock-container">
     <div v-for="clock in clocks" v-bind:key="clock" class="ongoing-clock-row">
-      <div uk-countdown="date: 2021-10-10T12:27:56+00:00">
-        <span class="uk-countdown-number uk-countdown-minutes"></span>
-        :
-        <span class="uk-countdown-number uk-countdown-seconds"></span>
-      </div>
+      <span class="">{{ clock.Minute }} : {{ clock.Second }} </span>
       <button class="uk-button uk-button-primary" name="stop" value="stop">
         stop
       </button>
@@ -73,6 +69,26 @@ import axios from "axios";
 import { ref, onMounted } from "vue";
 const apiUrl = "http://localhost:8000";
 
+function stopWatchReadingSet(clock, now) {
+  let start = new Date(clock.StartTime);
+  let remain = (start - now + clock.Duration / 1000000) / 1000;
+  clock.Minute = Math.max(Math.floor((remain % 3600) / 60), 0);
+  clock.Second = Math.max(Math.floor(remain - 60 * clock.Minute), 0);
+}
+
+function fetchClocks() {
+  return axios
+    .get(apiUrl + "/api/clocks")
+    .then((resp) => resp.data)
+    .then((clocks) => {
+      let now = new Date();
+      clocks.forEach((clock) => {
+        stopWatchReadingSet(clock, now);
+      });
+      return clocks;
+    });
+}
+
 export default {
   setup() {
     const items = ref([]);
@@ -89,17 +105,32 @@ export default {
     };
     const getClocks = async () => {
       try {
-        clocks.value = await axios
-          .get(apiUrl + "/api/clocks")
-          .then((resp) => resp.data);
+        clocks.value = await fetchClocks();
       } catch (e) {
         console.log(e);
       }
+    };
+    const countDown = () => {
+      setInterval(() => {
+        if (!clocks.value) {
+          return;
+        }
+        let now = new Date();
+        clocks.value = clocks.value.filter((clock) => {
+          stopWatchReadingSet(clock, now);
+          if (clock.Minute == 0 && clock.Second == 0) {
+            getRecords();
+            return false;
+          }
+          return true;
+        });
+      }, 500);
     };
 
     onMounted(() => {
       getRecords();
       getClocks();
+      countDown();
     });
 
     return {
@@ -107,6 +138,7 @@ export default {
       clocks,
     };
   },
+  computed: {},
   methods: {
     async clockStart(time, forWork) {
       try {
@@ -118,24 +150,20 @@ export default {
       }
     },
     async sleep(time) {
-      await new Promise(resolve => setTimeout(resolve, time))
+      await new Promise((resolve) => setTimeout(resolve, time));
     },
     async runningClockGet() {
       try {
-        return await axios.get(apiUrl + "/api/clocks")
-          .then((resp) => resp.data);
+        return await fetchClocks();
       } catch (e) {
         console.log(e);
       }
     },
     async clockStartAndRefetch(time, forWork) {
-      this.clocks = await Promise.all([
-        this.clockStart(time, forWork),
-        this.sleep(100),
-        this.runningClockGet()])
-          .then(result => result[2])
-    }
-    
+      this.clocks = await this.clockStart(time, forWork).then(() =>
+        this.runningClockGet()
+      );
+    },
   },
 };
 </script>
