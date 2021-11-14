@@ -1,21 +1,23 @@
-FROM golang:1.16-buster as builder
+FROM golang:1.16-alpine
 
-WORKDIR /app
+WORKDIR /tomatoClock
+COPY . /tomatoClock
+RUN apk update && apk upgrade
+RUN apk add --update nodejs-current npm
+RUN apk add g++
 
-COPY go.* ./
-RUN go mod download
+WORKDIR /tomatoClock/web_app
+RUN sed -i 's/"http:\/\/localhost:8000"/""/' src/components/Clock.vue
+RUN npm install -g @vue/cli
+RUN npm install
+RUN npm run build
+RUN cp -r dist/* /tomatoClock/dist/
 
-COPY . ./
+WORKDIR /tomatoClock
+RUN go build -o /tomatoClockServer
 
-RUN go build -v -o tomatoBotServer
-
-FROM debian:buster-slim
-RUN set -x && apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
-    ca-certificates && \
-    rm -rf /var/lib/apt/lists/*
-
-COPY --from=builder /app/tomatoBotServer /app/tomatoBotServer
-
-CMD ["/app/tomatoBotServer"]
+WORKDIR /
+EXPOSE 8000
+CMD ["/tomatoClockServer"]
 
 

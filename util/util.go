@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	defaultDataDir = "tomatobot_dat"
+	defaultDataDir = "tomato_dat"
 	confName       = "conf.json"
 )
 
