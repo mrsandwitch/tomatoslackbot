@@ -32,6 +32,10 @@ type ClockService struct {
 	clockId       uint64
 }
 
+type clockStopReq struct {
+	Id uint64 `json:"id"`
+}
+
 const timeFormat = "2006-01-02 15:04:05"
 
 func InitClockService(sender *SenderService, db *DbService, conf *ConfigService) (service *ClockService) {
@@ -216,4 +220,17 @@ func (service *ClockService) RunningClockGet(w http.ResponseWriter, req *http.Re
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+}
+
+func (service *ClockService) RunningClockStop(w http.ResponseWriter, req *http.Request) {
+	clockReq := clockStopReq{}
+	err := json.NewDecoder(req.Body).Decode(&clockReq)
+	if err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	service.runningClocks.Delete(clockReq.Id)
+	w.WriteHeader(http.StatusOK)
 }

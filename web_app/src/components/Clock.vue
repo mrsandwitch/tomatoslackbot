@@ -35,7 +35,13 @@
   <div class="ongoing-clock-container">
     <div v-for="clock in clocks" v-bind:key="clock" class="ongoing-clock-row">
       <span class="">{{ clock.Minute }} : {{ clock.Second }} </span>
-      <button class="uk-button uk-button-primary" name="stop" value="stop">
+      <span v-bind:class="'clock-label-text clock-label-text-' + clock.Tag">
+        {{ clock.Tag }}
+      </span>
+      <button
+        class="uk-button uk-button-primary"
+        v-on:click="clockStop(clock.Id)"
+      >
         stop
       </button>
     </div>
@@ -53,7 +59,7 @@
             <tr v-for="readable in item.Readables" v-bind:key="readable">
               <td class="uk-width-1-4">{{ readable.Start }}</td>
               <td class="uk-width-1-4">{{ readable.Duration }}</td>
-              <td v-bind:class="'uk-text-' + readable.Label">
+              <td v-bind:class="'clock-label-text-' + readable.Tag">
                 {{ readable.Tag }}
               </td>
             </tr>
@@ -79,7 +85,7 @@ function stopWatchReadingSet(clock, now) {
 function fetchClocks() {
   return axios
     .get(apiUrl + "/api/clocks")
-    .then((resp) => resp.data)
+    .then((resp) => (resp.data ? resp.data : []))
     .then((clocks) => {
       let now = new Date();
       clocks.forEach((clock) => {
@@ -164,6 +170,17 @@ export default {
         this.runningClockGet()
       );
     },
+    async clockStop(id) {
+      try {
+        this.clocks = await axios
+          .post(apiUrl + "/api/clockStop", {
+            id: id,
+          })
+          .then(() => this.runningClockGet());
+      } catch (e) {
+        console.log(e);
+      }
+    },
   },
 };
 </script>
@@ -209,5 +226,16 @@ export default {
   display: flex;
   align-items: center;
   flex-direction: column;
+}
+
+.clock-label-text {
+  text-align: center;
+  width: 40px;
+}
+.clock-label-text-work {
+  color: #1e87f0;
+}
+.clock-label-text-spare {
+  color: #32d296;
 }
 </style>
