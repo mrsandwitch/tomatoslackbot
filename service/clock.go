@@ -122,7 +122,6 @@ func (service *ClockService) finishNotification(clock runningClock) (err error) 
 
 func (service *ClockService) AddClock(record *ClockRecord, duration time.Duration) (err error) {
 	t := time.Now()
-	timeFormat := "2006-01-02 15:04:05"
 	text := fmt.Sprintf("Tomato clock start on [%s]. Duration:[%s]", t.Format(timeFormat), duration.String())
 	log.Println(text)
 
