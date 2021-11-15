@@ -3,23 +3,17 @@ package util
 import (
 	"log"
 	"net"
-	"os"
 	"path/filepath"
 	"strings"
 )
 
 const (
-	defaultDataDir = ".tomatobot"
+	defaultDataDir = "tomato_dat"
 	confName       = "conf.json"
 )
 
 func GetDataDir() string {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return filepath.Join("/root", defaultDataDir)
-	}
-
-	return filepath.Join(home, defaultDataDir)
+	return defaultDataDir
 }
 
 func GetConfigPath() string {

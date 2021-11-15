@@ -2,11 +2,13 @@ package service
 
 import (
 	"bushyang/tomatoslackbot/util"
-	"github.com/jinzhu/gorm"
-	_ "github.com/jinzhu/gorm/dialects/sqlite"
 	"log"
+	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/jinzhu/gorm"
+	_ "github.com/jinzhu/gorm/dialects/sqlite"
 )
 
 type DbService struct {
@@ -22,6 +24,7 @@ type ClockRecord struct {
 }
 
 func InitDbService() (*DbService, error) {
+	os.Mkdir(util.GetDataDir(), 0666)
 	dbPath := filepath.Join(util.GetDataDir(), "storage.db")
 	db, err := gorm.Open("sqlite3", dbPath)
 	if err != nil {
